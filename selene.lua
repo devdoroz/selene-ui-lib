@@ -5,7 +5,7 @@
 ]]
 
 local Selene = {
-	Version = "P.1";
+	Version = "P.1.1";
 	Binds = {}
 }
 
@@ -86,7 +86,7 @@ do
 	function tween(obj, properties, style)
 		return TweeningService:Create(obj, style or NO_STYLE, properties)
 	end
-
+	
 	function intro(src)
 		local intro = New "Frame" {
 			Name = "intro",
@@ -156,7 +156,7 @@ do
 
 		intro:Destroy()
 	end
-
+	
 	easing = TweenInfo.new
 end
 
@@ -324,7 +324,7 @@ do
 			Position = UDim2.fromScale(0.352, 0.381),
 			Size = UDim2.fromOffset(587, 412),
 			AnchorPoint = Vector2.new(.5, .5),
-
+			
 			[Children] = {
 				New "Frame" {
 					Name = "Buttons",
@@ -586,11 +586,10 @@ do
 
 		src.Parent = holder
 		src.Active = true
-		src.Draggable = true
 
 		return src
 	end
-
+	
 	function RAW.tab_navi(title, icon)
 		--@ returns a side-tab
 
@@ -650,7 +649,7 @@ do
 			}
 		}
 	end
-
+	
 	function RAW.modal(parent)
 		return New "TextButton" {
 			Name = "Modal",
@@ -747,7 +746,7 @@ do
 
 	function Tab:_objMount(obj)
 		table.insert(self.Props, obj)
-
+		
 		if Selene.Spotlight ~= self then
 			obj.Gui.Parent = Selene.Repository
 		else
@@ -818,19 +817,19 @@ do
 				self._temp:Disconnect()
 			end
 		end
-
+		
 		self.Parent:_remove(self)	
 		self.Gui:Destroy()
 	end
-
+	
 	function Slnobj:Get(...)
 		return self.State:get(...)	
 	end
-
+	
 	function Slnobj:Set(...)
 		return self.State:set(...)	
 	end
-
+	
 	function Slnobj:_init(args)
 		--@ initialize events
 
@@ -844,11 +843,11 @@ do
 
 		local gui = self.Gui
 		local modal = RAW.modal(self.Gui)
-
+		
 		local mousedown = function()
 			tween(self.Gui, { Size = self._initSize }):Play()
 		end
-
+		
 		if self._clickable then
 			modal.MouseButton1Down:Connect(function()
 				local iSize = self._initSize
@@ -859,7 +858,7 @@ do
 
 			modal.MouseButton1Up:Connect(mousedown)
 		end
-
+		
 		modal.MouseEnter:Connect(function()
 			tween(self.Gui, { BackgroundTransparency = .25 }):Play()
 		end)
@@ -868,7 +867,7 @@ do
 			if self._clickable then
 				mousedown()
 			end
-
+			
 			tween(self.Gui, { BackgroundTransparency = .85 }):Play()
 		end)
 
@@ -932,37 +931,31 @@ do
 	function Boolean:Hook(fn)
 		return self.State:observe(fn)
 	end
-
-	function Boolean:Toggle()
-		local opp = not self:Get()
-
-		self:Set(opp)
-	end
-
+	
 	function Boolean.new(parent, args)
 		local self = setmetatable({}, Boolean)
-
+		
 		self.Parent = parent
 		self.Gui = RAW.boolean(args.Title)
-		self.State = State.new(true)
-
-		self:Toggle()
-
+		self.State = State.new(not args.State)
+		
 		do
 			self._clickable = true
-
+			
 			self:_init(args)
-
+			
 			self._modal.MouseButton1Down:Connect(function(...)
-				self:Toggle()
+				self:Set(not self:Get())
 			end)
-
+			
 			self:Hook(function(value)
 				tween(self.Gui.Toggle.Progress, { Size = UDim2.fromScale(value and 1 or 0, value and 1 or 0) }, QUICK_STYLE):Play()
 				tween(self.Gui.Toggle.Wheel, { Position = UDim2.fromScale(value and .526 or -.1, .5) }, QUICK_STYLE):Play()
 			end)
+			
+			self:Set(args.State or false)
 		end
-
+		
 		return self
 	end
 end;
@@ -1042,7 +1035,7 @@ do
 							Size = UDim2.fromScale(0.124, 1),
 							ZIndex = 0,
 						},
-
+						
 						New "Frame" {
 							Name = "Helper",
 							Active = true,
@@ -1079,82 +1072,83 @@ do
 			}
 		}	
 	end
-
+	
 	function Slider:Hook(fn)
 		return self.State:observe(fn)
 	end
-
+	
 	function Slider.new(parent, args)
 		local self = setmetatable({}, Slider)
-
+		
 		self.Parent = parent
 		self.Gui = new_g(args.Title)
 		self.State = State.new(0)
 		self.Range = args.Range
-
+		
 		do
 			self._clickable = true
 			self:_init(args)
-
+			
 			-- [ ... ]
-
+			
 			local gui = self.Gui
 			local input = gui.Input
 			local progress, wheel = gui.Whole.Progress, gui.Whole.Wheel
-
+			
 			self:Hook(function(value)
 				value = math.round(value)
-
-				local max = self.Range[2]
-				local portion = (value / max)
-
+				
+				local min, max = self.Range[1], self.Range[2]
+				local portion = (value - min) / (max - min)
+				
 				tween(wheel, { 
 					Rotation = math.round(360 * portion),
 					Position = UDim2.fromScale(math.clamp(portion - .1, -.02, .93), .5)
 				}, QUICK_STYLE):Play()
-
+				
 				tween(progress, { Size = UDim2.fromScale(portion, 1) }, QUICK_STYLE):Play()
-
+				
 				input.Text = value .. "*"
 			end)
-
+			
 			input.FocusLost:Connect(function()
 				local num = tonumber(input.Text)
 
 				self:Set(num or self.Range[1])
 			end)
-
+			
 			self:Set(args.State or args.Range[1])
-
-			self._modal.Parent = self.Wheel
+			
 			self._temp = {}
-
+			
 			table.insert(self._temp, UserInputService.InputBegan:Connect(function(input)
 				if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 					return
 				end
-
+				
 				local mouse = CLIENT:GetMouse()
 				local guis = CLIENT.PlayerGui:GetGuiObjectsAtPosition(mouse.X, mouse.Y)
-
+				
 				if table.find(guis, self.Gui) then
 					self._active = true
-
+					
 					task.spawn(function()
 						while self.Gui.Parent ~= nil and self._active do
 							task.wait()
-
+							
 							local pos = UserInputService:GetMouseLocation()
 							local relative = (pos -  gui.Whole.Helper.AbsolutePosition)
-
+							
 							local portion = math.clamp(relative.X / gui.Whole.Helper.AbsoluteSize.X, 0, 1)
-
-							self:Set(portion * self.Range[2])
+							
+							local min, max = self.Range[1], self.Range[2]
+							
+							self:Set(min + (portion * (max - min)))
 						end	
 					end)
 				end
 			end))
-
+			
 			table.insert(self._temp, UserInputService.InputEnded:Connect(function(input)
 				if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 					return
@@ -1163,7 +1157,7 @@ do
 				self._active = false
 			end))
 		end
-
+		
 		return self
 	end
 end;
@@ -1284,7 +1278,7 @@ do
 			}
 		}
 	end
-
+	
 	local function option_g(parent, title)
 		return New "Frame" {
 			Name = "Option",
@@ -1316,113 +1310,113 @@ do
 			}
 		}
 	end
-
+	
 	function Dropdown:Hook(fn)
 		return self.State:observe(fn)
 	end
-
+	
 	function Dropdown:Add(obj)
 		local literal = self.List.core
-
+		
 		table.insert(literal, obj)
-
+		
 		self.List:set(literal, nil, true)
 	end
-
+	
 	function Dropdown:Remove(obj)
 		local literal = self.List.core
 
 		table.remove(literal, table.find(literal, obj))
-
+		
 		self.List:set(literal, nil, true)
 	end
-
+	
 	function Dropdown:Load()
 		if self._toggled then
 			self:Toggle()
 		end
-
+		
 		local buttons = self.Buttons
 		local arr = self.List:get()
-
+		
 		for i, choice in ipairs(buttons) do
 			choice:Destroy()
 			buttons[i] = nil
 		end
-
+		
 		for _, value in ipairs(arr) do
 			local choice = option_g(self.Gui.Dropper, value)
 			local modal = RAW.modal(choice)
-
+			
 			modal.MouseButton1Click:Connect(function()
 				if not self._toggled then
 					return
 				end
-
+				
 				self:Toggle()
 				self:Set(value)
 			end)
-
+			
 			modal.MouseEnter:Connect(function()
-				tween(modal, { BackgroundTransparency = .7 }, QUICK_STYLE):Play()	
+				tween(choice, { BackgroundTransparency = .7 }, QUICK_STYLE):Play()	
 			end)
-
+			
 			modal.MouseLeave:Connect(function()
-				tween(modal, { BackgroundTransparency = .8 }, QUICK_STYLE):Play()	
+				tween(choice, { BackgroundTransparency = .8 }, QUICK_STYLE):Play()	
 			end)
-
+			
 			table.insert(buttons, choice)	
 		end
 	end
-
+	
 	function Dropdown:Toggle()
 		local enable = not self._toggled
-
+		
 		local gui = self.Gui
 		local base, dropper = gui.Base, gui.Dropper
-
+		
 		local arr = self.List:get()
-
+		
 		tween(gui, { Size = UDim2.fromOffset(444, 37 * (1 + (enable and #arr or 0))) }, QUICK_STYLE):Play()
 		tween(dropper, { Size = UDim2.new(1, 0, 0, enable and (#arr * 37) or 0) }, QUICK_STYLE):Play()
 		tween(base.Arrow, { Rotation = enable and 0 or 180 }, QUICK_STYLE):Play()
-
+		
 		self._toggled = enable
 	end
-
+	
 	function Dropdown.new(parent, args)
 		local self = setmetatable({}, Dropdown)
-
+		
 		self.Parent = parent
 		self.Gui = new_g(args.Title)
 		self.State = State.new(args.State or args.Range[1])
-
+		
 		self.List = State.new( args.Range )
 		self.Buttons = {}
-
+		
 		do
 			self._toggled = true
-
+			
 			self:Toggle()
 			self:_init(args)
 			self:Load()
-
+			
 			self.List:observe(function()
 				self:Load()	
 			end)
-
+			
 			self:Hook(function(value)
 				self.Gui.Base.Choice.Text = tostring(value)	
 			end)
-
+			
 			self:Set(args.State or args.Range[1], nil, true)
-
+			
 			self._modal.Parent = self.Gui.Base
 			self._modal.MouseButton1Down:Connect(function(...)
 				self:Toggle()
 			end)
 		end
-
+		
 		return self
 	end	
 end;
@@ -1431,7 +1425,7 @@ local Embed = impl_sln()
 do
 	local function new_g(title, caption)
 		local strlen = caption:len()
-
+		
 		return New "Frame" {
 			Name = "Embed",
 			BackgroundColor3 = Color3.fromRGB(203, 203, 203),
@@ -1495,13 +1489,13 @@ do
 			}
 		} 
 	end
-
+	
 	function Embed.new(parent, args)
 		local self = setmetatable({}, Embed)
-
+		
 		self.Parent = parent
 		self.Gui = new_g(args.Title, args.Caption)
-
+		
 		return self
 	end	
 end;
@@ -1551,18 +1545,18 @@ function Selene:Toggle(on)
 
 	local CONST = on and 1 or .98
 	local style = easing(.75, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-
+	
 	if on then
 		self.Gui.Visible = true	
 		self._toggled = on
 	else
 		task.delay(style.Time, function()
 			self.Gui.Visible = false
-
+			
 			self._toggled = on
 		end)
 	end
-
+	
 	tween(self.Gui, {
 		GroupTransparency = on and 0 or 1,
 		Size = UDim2.fromOffset(587 * CONST, 412 * CONST)
@@ -1610,7 +1604,7 @@ function Selene:Create(SETTINGS)
 		button.MouseButton1Click:Connect(function()
 			self:Toggle(false)		
 		end)
-
+		
 		task.spawn(function()
 			local TIME = 1.2
 
@@ -1623,19 +1617,58 @@ function Selene:Create(SETTINGS)
 				end
 			end	
 		end)
-
+		
 		UserInputService.InputBegan:Connect(function(input)
 			local code = input.KeyCode
 			local bind =  self.Binds[code]
-
+			
 			return bind and bind()
 		end)
-
+		
 		self:Bind(Enum.KeyCode.RightShift, function()
 			self:Toggle(true)
 		end)
-
+		
 		self._toggled = true
+		
+		--@ dragging
+		do
+			local dragging
+			local dragInput
+			local dragStart
+			local startPos
+
+			local function update(input)
+				local delta = input.Position - dragStart
+				gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+
+			gui.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					dragging = true
+					dragStart = input.Position
+					startPos = gui.Position
+
+					input.Changed:Connect(function()
+						if input.UserInputState == Enum.UserInputState.End then
+							dragging = false
+						end
+					end)
+				end
+			end)
+
+			gui.InputChanged:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+					dragInput = input
+				end
+			end)
+
+			UserInputService.InputChanged:Connect(function(input)
+				if input == dragInput and dragging then
+					update(input)
+				end
+			end)
+		end
 	end
 
 	task.defer(intro, self.Gui)
